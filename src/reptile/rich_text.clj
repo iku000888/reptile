@@ -1,9 +1,9 @@
 (ns reptile.rich-text
-  (:import java.awt.BorderLayout
+  (:import [java.awt BorderLayout FlowLayout]
            java.awt.event.ActionListener
-           [javax.swing JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane]
+           [javax.swing JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToolBar]
            javax.swing.event.CaretListener
-           [javax.swing.text DefaultStyledDocument StyleContext]
+           [javax.swing.text BadLocationException DefaultStyledDocument StyleContext]
            javax.swing.text.rtf.RTFEditorKit))
 
 (def flag (atom false))
@@ -38,6 +38,17 @@
     (.setActionCommand exit-item "openItem")
     menu-bar))
 
+(defn init-document [doc sc]
+  (let [sb (str "スタイル付きのテキストサンプルです。\n"
+                "スタイルを変えて表示しています。")]
+    (try (.insertString doc 0 sb (.getStyle sc StyleContext/DEFAULT_STYLE))
+         (catch BadLocationException ble
+           (prn "初期文書の読み込みに失敗しました。")))))
+
+(defn init-toolbar []
+  (let [tool-bar (JToolBar.)]
+    (.setLayout tool-bar (FlowLayout. FlowLayout/LEFT))))
+
 (defn constructor []
   (let [jframe (doto (create-jframe-proxy)
                  (.setTitle "TextPaneTest test")
@@ -46,7 +57,8 @@
         scroll-pane (JScrollPane. text-pane
                                   JScrollPane/VERTICAL_SCROLLBAR_ALWAYS
                                   JScrollPane/HORIZONTAL_SCROLLBAR_NEVER)
-        doc (DefaultStyledDocument. (StyleContext.))
+        sc (StyleContext.)
+        doc (DefaultStyledDocument. )
         menu-bar (create-menubar jframe)]
     (->  jframe
          (.getContentPane)
@@ -54,10 +66,11 @@
     (doto text-pane
       (.setDocument doc)
       (.addCaretListener jframe))
+    (.setJMenuBar jframe menu-bar)
+    (init-document doc sc)
     jframe))
 
 ;;;Use
 (doto (constructor)
-  .pack
   (.setVisible true)
   (.setSize 400 400))
