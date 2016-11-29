@@ -1,7 +1,7 @@
 (ns reptile.rich-text
-  (:import [java.awt BorderLayout FlowLayout]
+  (:import [java.awt BorderLayout FlowLayout GraphicsEnvironment]
            java.awt.event.ActionListener
-           [javax.swing JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToolBar]
+           [javax.swing JComboBox JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToolBar]
            javax.swing.event.CaretListener
            [javax.swing.text BadLocationException DefaultStyledDocument StyleContext]
            javax.swing.text.rtf.RTFEditorKit))
@@ -45,9 +45,19 @@
          (catch BadLocationException ble
            (prn "初期文書の読み込みに失敗しました。")))))
 
-(defn init-toolbar []
-  (let [tool-bar (JToolBar.)]
-    (.setLayout tool-bar (FlowLayout. FlowLayout/LEFT))))
+(defn init-toolbar [jframe tool-bar]
+  (let [ge (GraphicsEnvironment/getLocalGraphicsEnvironment)
+        family-name (.getAvailableFontFamilyNames ge)
+        combo-fonts (JComboBox. family-name)
+        ;;TODO:combo-sizes
+        ]
+    (doto combo-fonts
+      (.setMaximumSize (.getPreferredSize combo-fonts))
+      (.addActionListener jframe)
+      (.setActionCommand "comboFonts"))
+    (doto tool-bar
+      (.setLayout (FlowLayout. FlowLayout/LEFT))
+      (.add combo-fonts))))
 
 (defn constructor []
   (let [jframe (doto (create-jframe-proxy)
@@ -59,7 +69,8 @@
                                   JScrollPane/HORIZONTAL_SCROLLBAR_NEVER)
         sc (StyleContext.)
         doc (DefaultStyledDocument. )
-        menu-bar (create-menubar jframe)]
+        menu-bar (create-menubar jframe)
+        tool-bar (JToolBar.)]
     (->  jframe
          (.getContentPane)
          (.add scroll-pane BorderLayout/CENTER))
@@ -68,6 +79,10 @@
       (.addCaretListener jframe))
     (.setJMenuBar jframe menu-bar)
     (init-document doc sc)
+    (init-toolbar jframe tool-bar)
+    (->  jframe
+         (.getContentPane)
+         (.add tool-bar BorderLayout/NORTH))
     jframe))
 
 ;;;Use
