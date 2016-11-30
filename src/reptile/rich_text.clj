@@ -1,7 +1,7 @@
 (ns reptile.rich-text
-  (:import [java.awt BorderLayout FlowLayout GraphicsEnvironment]
+  (:import [java.awt BorderLayout Dimension FlowLayout GraphicsEnvironment]
            java.awt.event.ActionListener
-           [javax.swing JComboBox JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToolBar]
+           [javax.swing DefaultComboBoxModel JComboBox JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToggleButton JToolBar]
            javax.swing.event.CaretListener
            [javax.swing.text BadLocationException DefaultStyledDocument StyleContext]
            javax.swing.text.rtf.RTFEditorKit))
@@ -49,15 +49,55 @@
   (let [ge (GraphicsEnvironment/getLocalGraphicsEnvironment)
         family-name (.getAvailableFontFamilyNames ge)
         combo-fonts (JComboBox. family-name)
-        ;;TODO:combo-sizes
-        ]
+        combo-sizes (JComboBox. (into-array ["8" "9" "10" "11" "12" "14" "16" "18" "20" "22" "24" "26" "28" "36" "48" "72"]))
+        toggle-bold (JToggleButton. "<html><b>B</b></html>")
+        toggle-italics (JToggleButton. "<html><i>I</i></html>")
+        toggle-underline (JToggleButton. "<html><u>U</u></html>")
+        toggle-strike (JToggleButton. "<html><s>S</s></html>")
+        color-model (DefaultComboBoxModel.)
+        combo-color (JComboBox. color-model)]
     (doto combo-fonts
       (.setMaximumSize (.getPreferredSize combo-fonts))
       (.addActionListener jframe)
       (.setActionCommand "comboFonts"))
+    (doto combo-sizes
+      (.setMaximumSize (.getPreferredSize combo-sizes))
+      (.addActionListener jframe)
+      (.setActionCommand "comboSizes"))
+    (doto toggle-bold
+      (.setPreferredSize (Dimension. 26 26))
+      (.addActionListener jframe)
+      (.setActionCommand "toggle-bold"))
+    (doto toggle-italics
+      (.setPreferredSize (Dimension. 26 26))
+      (.addActionListener jframe)
+      (.setActionCommand "toggle-italics"))
+    (doto toggle-underline
+      (.setPreferredSize (Dimension. 26 26))
+      (.addActionListener jframe)
+      (.setActionCommand "toggle-underline"))
+    (doto toggle-strike
+      (.setPreferredSize (Dimension. 26 26))
+      (.addActionListener jframe)
+      (.setActionCommand "toggle-strike"))
+    (doseq [color ["#000000" "#0000FF" "#00FF00" "#00FFFF" "#FF0000" "#FF00FF" "#FFFF00" "#FFFFFF"]
+            :let [html (str "<html><font color=\"" color "\">■</font></html>")]]
+      (.addElement color-model html))
+    (doto combo-color
+      (.setMaximumSize (.getPreferredSize combo-color))
+      (.addActionListener jframe)
+      (.setActionCommand "combo-color"))
     (doto tool-bar
       (.setLayout (FlowLayout. FlowLayout/LEFT))
-      (.add combo-fonts))))
+      (.add combo-fonts)
+      (.add combo-sizes)
+      .addSeparator
+      (.add toggle-bold)
+      (.add toggle-italics)
+      (.add toggle-underline)
+      (.add toggle-strike)
+      .addSeparator
+      (.add combo-color))))
 
 (defn constructor []
   (let [jframe (doto (create-jframe-proxy)
@@ -88,4 +128,4 @@
 ;;;Use
 (doto (constructor)
   (.setVisible true)
-  (.setSize 400 400))
+  (.setSize 800 400))
