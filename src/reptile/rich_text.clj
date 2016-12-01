@@ -6,13 +6,28 @@
            [javax.swing.text BadLocationException DefaultStyledDocument StyleContext]
            javax.swing.text.rtf.RTFEditorKit))
 
-(def flag (atom false))
 (def rtf-editor (RTFEditorKit.))
 
+(defmulti handle-action #(.getActionCommand %))
+
+(defmethod handle-action :default
+  [e]
+  (prn "Dunno whaaat to do"))
+
+(defmethod handle-action "exitItem"
+  [e]
+  (prn "Exititem!!!!"))
+
+(defmethod handle-action "saveItem"
+  [e]
+  (prn "Saveitem!!!!"))
+
 (defn create-jframe-proxy []
-  (proxy [JFrame ActionListener CaretListener] []
-    (actionPerformed [e]
-      (prn "Actionperformed!!!" e))))
+  (let [is-caret-update-atom (atom false)]
+    (proxy [JFrame ActionListener CaretListener] []
+      (actionPerformed [e]
+        (when-not @is-caret-update-atom
+          (handle-action e))))))
 
 (defn create-menubar [this]
   "'this' must implement the ActionListener interface"
@@ -31,11 +46,11 @@
     (.setActionCommand open-item "openItem")
     (.add file-menu save-item)
     (.addActionListener save-item this)
-    (.setActionCommand save-item "openItem")
+    (.setActionCommand save-item "saveItem")
     (.addSeparator file-menu)
     (.add file-menu exit-item)
     (.addActionListener exit-item this)
-    (.setActionCommand exit-item "openItem")
+    (.setActionCommand exit-item "exitItem")
     menu-bar))
 
 (defn init-document [doc sc]
