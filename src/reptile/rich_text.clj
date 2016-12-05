@@ -8,6 +8,11 @@
 
 (def rtf-editor (RTFEditorKit.))
 
+(definterface IStateHolder
+  (getStateMap [])
+  (swapStateMap [update-fn]))
+
+;; anctionPerformed handlers
 (defmulti handle-action #(.getActionCommand %))
 
 (defmethod handle-action :default
@@ -21,13 +26,6 @@
 (defmethod handle-action "saveItem"
   [e]
   (prn "Saveitem!!!!"))
-
-(defn create-jframe-proxy []
-  (let [is-caret-update-atom (atom false)]
-    (proxy [JFrame ActionListener CaretListener] []
-      (actionPerformed [e]
-        (when-not @is-caret-update-atom
-          (handle-action e))))))
 
 (defn create-menubar [this]
   "'this' must implement the ActionListener interface"
@@ -113,6 +111,17 @@
       (.add toggle-strike)
       .addSeparator
       (.add combo-color))))
+
+(defn create-jframe-proxy []
+  (let [is-caret-update-atom (atom false)
+        state (atom {})]
+    (proxy [JFrame ActionListener CaretListener IStateHolder] []
+      (actionPerformed [e]
+        (when-not @is-caret-update-atom
+          (handle-action e)))
+      (getStateMap [] @state)
+      (swapStateMap [update-fn]
+        (swap! state update-fn)))))
 
 (defn constructor []
   (let [jframe (doto (create-jframe-proxy)
