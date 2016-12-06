@@ -3,7 +3,7 @@
            java.awt.event.ActionListener
            [javax.swing DefaultComboBoxModel JComboBox JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToggleButton JToolBar]
            javax.swing.event.CaretListener
-           [javax.swing.text BadLocationException DefaultStyledDocument StyleContext]
+           [javax.swing.text BadLocationException DefaultStyledDocument SimpleAttributeSet StyleConstants StyleContext]
            javax.swing.text.rtf.RTFEditorKit))
 
 (def rtf-editor (RTFEditorKit.))
@@ -13,19 +13,45 @@
   (swapStateMap [update-fn]))
 
 ;; anctionPerformed handlers
-(defmulti handle-action #(.getActionCommand %))
+(defmulti handle-action (fn [_ cmd] (.getActionCommand cmd)))
 
 (defmethod handle-action :default
-  [e]
+  [state e]
   (prn "Dunno whaaat to do"))
 
 (defmethod handle-action "exitItem"
-  [e]
-  (prn "Exititem!!!!"))
+  [state e]
+  (prn  state "Exititem!!!!"))
 
 (defmethod handle-action "saveItem"
-  [e]
-  (prn "Saveitem!!!!"))
+  [state e]
+  (prn state "Saveitem!!!!"))
+
+(defn set-attribute-set [document text-pane attr]
+  (let [start (.getSelectionStart text-pane)
+        end (.getSelectionEnd text-pane)]
+    (prn "setting attribute set...")
+    (.setCharacterAttributes document start (- end start) attr false)))
+
+(defmethod handle-action "comboFonts"
+  [this e]
+  (let [{:keys [combo-fonts text-pane document] :as state}
+        (.getStateMap this)
+        attr (SimpleAttributeSet.)
+        font-name (-> combo-fonts .getSelectedItem .toString)]
+    (StyleConstants/setFontFamily attr font-name)
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(defmethod handle-action "comboSizes"
+  [this e]
+  (prn "comboSizes" (-> this .getStateMap :combo-sizes .getSelectedItem ) )
+  (let [{:keys [combo-sizes text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)
+        font-size (-> combo-sizes .getSelectedItem Integer/parseInt)]
+    (StyleConstants/setFontSize attr font-size)
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
 
 (defn create-menubar [this]
   "'this' must implement the ActionListener interface"
@@ -110,15 +136,20 @@
       (.add toggle-underline)
       (.add toggle-strike)
       .addSeparator
-      (.add combo-color))))
+      (.add combo-color))
+    {:combo-fonts combo-fonts
+     :combo-sizes combo-sizes}))
 
 (defn create-jframe-proxy []
   (let [is-caret-update-atom (atom false)
         state (atom {})]
     (proxy [JFrame ActionListener CaretListener IStateHolder] []
+
       (actionPerformed [e]
         (when-not @is-caret-update-atom
-          (handle-action e)))
+          (handle-action this e)))
+
+      ;; IStateHolder ops
       (getStateMap [] @state)
       (swapStateMap [update-fn]
         (swap! state update-fn)))))
@@ -134,7 +165,8 @@
         sc (StyleContext.)
         doc (DefaultStyledDocument. )
         menu-bar (create-menubar jframe)
-        tool-bar (JToolBar.)]
+        tool-bar (JToolBar.)
+        tool-bar-components (init-toolbar jframe tool-bar)]
     (->  jframe
          (.getContentPane)
          (.add scroll-pane BorderLayout/CENTER))
@@ -143,10 +175,16 @@
       (.addCaretListener jframe))
     (.setJMenuBar jframe menu-bar)
     (init-document doc sc)
-    (init-toolbar jframe tool-bar)
     (->  jframe
          (.getContentPane)
          (.add tool-bar BorderLayout/NORTH))
+    (.swapStateMap jframe #(merge % {:text-pane text-pane
+                                     :scroll-pane scroll-pane
+                                     :style-context sc
+                                     :document doc
+                                     :menu-bar menu-bar
+                                     :tool-bar tool-bar}
+                                  tool-bar-components))
     jframe))
 
 ;;;Use
