@@ -1,10 +1,11 @@
 (ns reptile.rich-text
-  (:import [java.awt BorderLayout Dimension FlowLayout GraphicsEnvironment]
+  (:import [java.awt BorderLayout Color Dimension FlowLayout GraphicsEnvironment]
            java.awt.event.ActionListener
            [javax.swing DefaultComboBoxModel JComboBox JFrame JMenu JMenuBar JMenuItem JScrollPane JTextPane JToggleButton JToolBar]
            javax.swing.event.CaretListener
            [javax.swing.text BadLocationException DefaultStyledDocument SimpleAttributeSet StyleConstants StyleContext]
-           javax.swing.text.rtf.RTFEditorKit))
+           javax.swing.text.rtf.RTFEditorKit)
+  (:require [clojure.string :as str]))
 
 (def rtf-editor (RTFEditorKit.))
 
@@ -45,11 +46,56 @@
 
 (defmethod handle-action "comboSizes"
   [this e]
-  (prn "comboSizes" (-> this .getStateMap :combo-sizes .getSelectedItem ) )
+  (prn "comboSizes" (-> this .getStateMap :combo-sizes .getSelectedItem))
   (let [{:keys [combo-sizes text-pane document]} (.getStateMap this)
         attr (SimpleAttributeSet.)
         font-size (-> combo-sizes .getSelectedItem Integer/parseInt)]
     (StyleConstants/setFontSize attr font-size)
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(def colors ["000000" "0000FF" "00FF00" "00FFFF" "FF0000" "FF00FF" "FFFF00" "FFFFFF"])
+(defmethod handle-action "combo-color"
+  [this e]
+  (let [{:keys [combo-color text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)
+        color (get colors (.getSelectedIndex combo-color))
+        b (Integer/parseInt (.substring color 4 6) 16)
+        g (Integer/parseInt (.substring color 2 4) 16)
+        r (Integer/parseInt (.substring color 0 2) 16)]
+    (StyleConstants/setForeground attr (Color. r g b))
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(defmethod handle-action "toggle-bold"
+  [this e]
+  (let [{:keys [toggle-bold text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)]
+    (StyleConstants/setBold attr (.isSelected toggle-bold))
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(defmethod handle-action "toggle-italics"
+  [this e]
+  (let [{:keys [toggle-italics text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)]
+    (StyleConstants/setItalic attr (.isSelected toggle-italics))
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(defmethod handle-action "toggle-underline"
+  [this e]
+  (let [{:keys [toggle-underline text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)]
+    (StyleConstants/setUnderline attr (.isSelected toggle-underline))
+    (set-attribute-set document text-pane attr)
+    (.requestFocusInWindow text-pane)))
+
+(defmethod handle-action "toggle-strike"
+  [this e]
+  (let [{:keys [toggle-strike text-pane document]} (.getStateMap this)
+        attr (SimpleAttributeSet.)]
+    (StyleConstants/setStrikeThrough attr (.isSelected toggle-strike))
     (set-attribute-set document text-pane attr)
     (.requestFocusInWindow text-pane)))
 
@@ -88,7 +134,7 @@
   (let [ge (GraphicsEnvironment/getLocalGraphicsEnvironment)
         family-name (.getAvailableFontFamilyNames ge)
         combo-fonts (JComboBox. family-name)
-        combo-sizes (JComboBox. (into-array ["8" "9" "10" "11" "12" "14" "16" "18" "20" "22" "24" "26" "28" "36" "48" "72"]))
+        combo-sizes (JComboBox. (into-array ["8" "9" "10" "11" "12" "14" "16" "18" "20" "22" "24" "26" "28" "36" "48" "60" "72" "84" "96"]))
         toggle-bold (JToggleButton. "<html><b>B</b></html>")
         toggle-italics (JToggleButton. "<html><i>I</i></html>")
         toggle-underline (JToggleButton. "<html><u>U</u></html>")
@@ -119,8 +165,8 @@
       (.setPreferredSize (Dimension. 26 26))
       (.addActionListener jframe)
       (.setActionCommand "toggle-strike"))
-    (doseq [color ["#000000" "#0000FF" "#00FF00" "#00FFFF" "#FF0000" "#FF00FF" "#FFFF00" "#FFFFFF"]
-            :let [html (str "<html><font color=\"" color "\">■</font></html>")]]
+    (doseq [color colors
+            :let [html (str "<html><font color=\"#" color "\">■</font></html>")]]
       (.addElement color-model html))
     (doto combo-color
       (.setMaximumSize (.getPreferredSize combo-color))
@@ -138,7 +184,12 @@
       .addSeparator
       (.add combo-color))
     {:combo-fonts combo-fonts
-     :combo-sizes combo-sizes}))
+     :combo-sizes combo-sizes
+     :combo-color combo-color
+     :toggle-bold toggle-bold
+     :toggle-italics toggle-italics
+     :toggle-strike toggle-strike
+     :toggle-underline toggle-underline}))
 
 (defn create-jframe-proxy []
   (let [is-caret-update-atom (atom false)
